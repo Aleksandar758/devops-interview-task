@@ -14,7 +14,7 @@ modules:
     http:
       valid_status_codes: [200]
       tls_config:
-        insecure_skip_verify: true   
+        insecure_skip_verify: true
         server_name: localhost
       headers:
         Host: localhost

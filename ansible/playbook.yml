@@ -67,6 +67,8 @@
         src: ../project/
         dest: /opt/vps-infrastructure/project/
         force: true
+        directory_mode: "0755"
+        mode: "0644"
       notify: Restart application stack
 
     - name: 5b. Check deployment credentials are provided
@@ -102,15 +104,16 @@
         path: /opt/vps-infrastructure/project/ssl/nginx.crt
       register: ssl_certificate
 
-    - name: 6b. Generate SSL certificate
+    - name: 6b. Generate SSL certificate  # noqa no-changed-when
       ansible.builtin.command:
         cmd: >
           openssl req -x509 -nodes -days 365
           -newkey rsa:2048
           -keyout /opt/vps-infrastructure/project/ssl/nginx.key
           -out /opt/vps-infrastructure/project/ssl/nginx.crt
-          -subj "/CN=localhost"
-      when: not ssl_certificate.stat.exists
+            -subj "/CN=localhost"
+          changed_when: true
+          when: not ssl_certificate.stat.exists
       notify: Restart application stack
 
     # ---------------------------------------------------------
@@ -133,6 +136,7 @@
       ansible.builtin.command:
         cmd: docker compose up -d --force-recreate
         chdir: /opt/vps-infrastructure/project
+      changed_when: true
 
     - name: Restart SSH
       ansible.builtin.service:
