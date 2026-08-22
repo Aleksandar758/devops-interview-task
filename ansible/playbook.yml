@@ -1,0 +1,109 @@
+---
+- name: Automate and Secure VPS Server
+  hosts: vps
+  become: true
+
+  tasks:
+
+    # ---------------------------------------------------------
+    # 1. Update system
+    # ---------------------------------------------------------
+    - name: 1. Update apt cache and upgrade system
+      ansible.builtin.apt:
+        update_cache: true
+        upgrade: dist
+        cache_valid_time: 3600
+
+    # ---------------------------------------------------------
+    # 2. Install required packages
+    # ---------------------------------------------------------
+    - name: 2. Install prerequisite system packages
+      ansible.builtin.apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+          - openssl
+          - docker.io
+          - docker-compose
+        state: present
+        update_cache: true
+
+    # ---------------------------------------------------------
+    # 3. Ensure Docker is running
+    # ---------------------------------------------------------
+    - name: 3. Ensure Docker service is running and enabled
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+
+    # ---------------------------------------------------------
+    # 4. Create deployment directories
+    # ---------------------------------------------------------
+    - name: 4. Create deployment directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - /opt/vps-infrastructure
+        - /opt/vps-infrastructure/project
+        - /opt/vps-infrastructure/project/ssl
+
+    # ---------------------------------------------------------
+    # 5. Copy entire project to the correct location
+    # ---------------------------------------------------------
+    - name: 5. Copy project files to server
+      ansible.builtin.copy:
+        src: ../project/
+        dest: /opt/vps-infrastructure/project/
+        force: true
+      notify: Restart application stack
+
+    # ---------------------------------------------------------
+    # 6. Generate SSL certificate only if it does not exist
+    # ---------------------------------------------------------
+    - name: 6. Check if SSL certificate exists
+      ansible.builtin.stat:
+        path: /opt/vps-infrastructure/project/ssl/nginx.crt
+      register: ssl_certificate
+
+    - name: 6b. Generate SSL certificate
+      ansible.builtin.command:
+        cmd: >
+          openssl req -x509 -nodes -days 365
+          -newkey rsa:2048
+          -keyout /opt/vps-infrastructure/project/ssl/nginx.key
+          -out /opt/vps-infrastructure/project/ssl/nginx.crt
+          -subj "/CN=localhost"
+      when: not ssl_certificate.stat.exists
+      notify: Restart application stack
+
+    # ---------------------------------------------------------
+    # 7. Disable SSH password authentication
+    # ---------------------------------------------------------
+    - name: 7. Disable SSH password authentication
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^#?PasswordAuthentication"
+        line: "PasswordAuthentication no"
+        backup: true
+      notify: Restart SSH
+
+  # ===========================================================
+  # HANDLERS
+  # ===========================================================
+  handlers:
+
+    - name: Restart application stack
+      ansible.builtin.command:
+        cmd: docker compose up -d --force-recreate
+        chdir: /opt/vps-infrastructure/project
+
+    - name: Restart SSH
+      ansible.builtin.service:
+        name: ssh
+        state: restarted

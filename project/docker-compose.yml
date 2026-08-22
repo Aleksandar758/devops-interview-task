@@ -1,0 +1,113 @@
+version: '3.8'
+
+services:
+  # 1. Nginx Web Server (HTTP/HTTPS)
+  webserver:
+    image: nginx:alpine
+    container_name: nginx_webserver
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - ./html-http:/usr/share/nginx/html/http:ro
+      - ./html-https:/usr/share/nginx/html/https:ro
+    restart: always
+
+  # 2. PostgreSQL Database with Auto-Initialization
+  database:
+    image: postgres:15-alpine
+    container_name: postgres_db
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: supersecretpassword
+      POSTGRES_DB: network_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./db-init:/docker-entrypoint-initdb.d:ro
+    restart: always
+
+  # 3. PostgreSQL Automated Backup Lifecycle
+  database-backup:
+    image: prodrigestivill/postgres-backup-local:15-alpine
+    container_name: postgres_backup
+    environment:
+      - POSTGRES_HOST=database
+      - POSTGRES_CLUSTER=TRUE
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=supersecretpassword
+      - POSTGRES_DB=network_db
+      - SCHEDULE=@daily
+      - BACKUP_KEEP_DAYS=7
+    volumes:
+      - ./db-backups:/backup
+    depends_on:
+      - database
+    restart: always
+
+  # 4. Prometheus Node Exporter (System Resources Metrics)
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node_exporter
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+    restart: always
+
+    # 5. Blackbox Exporter (Web Server Availability Probing)
+  blackbox-exporter:
+    image: prom/blackbox-exporter:latest
+    container_name: blackbox_exporter
+    volumes:
+      - ./monitoring/blackbox/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
+    command:
+      - '--config.file=/etc/blackbox_exporter/config.yml'
+    ports:
+      - "9115:9115"
+    restart: always
+
+  # 6. Prometheus Server (Metrics Collection & Alerting)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: Hills_server
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/alert.rules.yml:/etc/prometheus/alert.rules.yml:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    ports:
+      - "9090:9090"
+    depends_on:
+      - node-exporter
+    restart: always
+
+  # 7. Alertmanager (Notification Engine)
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager_app
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+    ports:
+      - "9093:9093"
+    restart: always
+
+  # 8. Grafana Dashboards (Data Visualization)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana_ui
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - prometheus
+    restart: always

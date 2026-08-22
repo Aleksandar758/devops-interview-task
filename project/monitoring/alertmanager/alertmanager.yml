@@ -1,0 +1,12 @@
+route:
+  receiver: 'slack-alerts'
+  group_by: ['alertname']
+  group_wait: 10s
+  group_interval: 5m
+  repeat_interval: 3h
+
+receivers:
+  - name: 'slack-alerts'
+    slack_configs:
+      - api_url: 'https://slack.com' # slack channel
+        channel: '#alerts'

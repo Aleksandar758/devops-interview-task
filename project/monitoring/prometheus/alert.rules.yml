@@ -1,0 +1,26 @@
+groups:
+  - name: system_resource_alerts
+    rules:
+      - alert: HighCpuUsage
+        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[1m])) * 100) > 85
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High CPU Usage detected"
+
+      - alert: LowMemoryUsage
+        expr: (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 < 15
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low Memory warning"
+
+      - alert: DiskSpaceRunningLow
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 10
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Disk space running critically low"
