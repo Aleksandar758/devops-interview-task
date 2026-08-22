@@ -20,6 +20,18 @@ spec:
         ports:
         - containerPort: 80
         - containerPort: 443
+        volumeMounts:
+        - name: nginx-config
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+          readOnly: true
+        - name: web-content
+          mountPath: /usr/share/nginx/html/index.html
+          subPath: index.html
+          readOnly: true
+        - name: tls
+          mountPath: /etc/nginx/ssl
+          readOnly: true
         resources:
           requests:
             cpu: "100m"
@@ -27,3 +39,19 @@ spec:
           limits:
             cpu: "200m"
             memory: "128Mi"
+      volumes:
+      - name: nginx-config
+        configMap:
+          name: nginx-webserver-config
+          items:
+          - key: nginx.conf
+            path: nginx.conf
+      - name: web-content
+        configMap:
+          name: nginx-webserver-config
+          items:
+          - key: index.html
+            path: index.html
+      - name: tls
+        secret:
+          secretName: nginx-tls-secret

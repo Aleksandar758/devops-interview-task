@@ -1,0 +1,4 @@
+project/.env
+project/db-backups/
+kubernetes/tls.key
+kubernetes/tls.crt

@@ -3,6 +3,12 @@
   hosts: vps
   become: true
 
+  vars:
+    postgres_user: "{{ lookup('env', 'POSTGRES_USER') }}"
+    postgres_password: "{{ lookup('env', 'POSTGRES_PASSWORD') }}"
+    postgres_db: "{{ lookup('env', 'POSTGRES_DB') }}"
+    grafana_admin_password: "{{ lookup('env', 'GRAFANA_ADMIN_PASSWORD') }}"
+
   tasks:
 
     # ---------------------------------------------------------
@@ -61,6 +67,31 @@
         src: ../project/
         dest: /opt/vps-infrastructure/project/
         force: true
+      notify: Restart application stack
+
+    - name: 5b. Check deployment credentials are provided
+      ansible.builtin.assert:
+        that:
+          - postgres_user | length > 0
+          - postgres_password | length > 0
+          - postgres_db | length > 0
+          - grafana_admin_password | length > 0
+        fail_msg: >-
+          Set POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB and
+          GRAFANA_ADMIN_PASSWORD in the controller environment before running Ansible.
+
+    - name: 5c. Create Compose environment file on server
+      ansible.builtin.copy:
+        dest: /opt/vps-infrastructure/project/.env
+        content: |
+          POSTGRES_USER={{ postgres_user }}
+          POSTGRES_PASSWORD={{ postgres_password }}
+          POSTGRES_DB={{ postgres_db }}
+          GRAFANA_ADMIN_PASSWORD={{ grafana_admin_password }}
+        owner: root
+        group: root
+        mode: "0600"
+      no_log: true
       notify: Restart application stack
 
     # ---------------------------------------------------------
