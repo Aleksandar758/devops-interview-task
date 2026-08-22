@@ -56,7 +56,6 @@ jobs:
             | sh -s -- -b "$RUNNER_TEMP/trivy-bin"
           "$RUNNER_TEMP/trivy-bin/trivy" config . \
             --severity HIGH,CRITICAL \
-            --ignore-unfixed \
             --exit-code 1
 
       - name: Scan repository for leaked secrets
