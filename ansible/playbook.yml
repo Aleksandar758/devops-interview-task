@@ -111,9 +111,9 @@
           -newkey rsa:2048
           -keyout /opt/vps-infrastructure/project/ssl/nginx.key
           -out /opt/vps-infrastructure/project/ssl/nginx.crt
-            -subj "/CN=localhost"
-          changed_when: true
-          when: not ssl_certificate.stat.exists
+          -subj "/CN=localhost"
+      changed_when: true
+      when: not ssl_certificate.stat.exists
       notify: Restart application stack
 
     # ---------------------------------------------------------
