@@ -90,7 +90,15 @@ jobs:
         run: |
           curl --fail --silent http://127.0.0.1/
           curl --fail --silent --insecure https://127.0.0.1/
-          docker compose exec -T database pg_isready -U admin -d network_db
+          for attempt in {1..30}; do
+            if docker compose exec -T database pg_isready -U admin -d network_db; then
+              exit 0
+            fi
+            echo "PostgreSQL is not ready yet (attempt $attempt/30)"
+            sleep 2
+          done
+          echo "PostgreSQL did not become ready in time"
+          exit 1
 
       - name: Show service logs on failure
         if: failure()
