@@ -73,6 +73,7 @@ jobs:
 
       - name: Prepare local TLS certificate
         run: |
+          mkdir -p project/ssl
           openssl req -x509 -nodes -days 1 -newkey rsa:2048 \
             -keyout project/ssl/nginx.key \
             -out project/ssl/nginx.crt \
@@ -94,12 +95,16 @@ jobs:
       - name: Show service logs on failure
         if: failure()
         working-directory: project
-        run: docker compose logs --no-color
+        run: |
+          cp .env.example .env
+          docker compose logs --no-color
 
       - name: Stop infrastructure stack
         if: always()
         working-directory: project
-        run: docker compose down -v
+        run: |
+          cp .env.example .env
+          docker compose down -v
 
   deploy:
     name: Deploy with Ansible
