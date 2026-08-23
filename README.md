@@ -170,6 +170,15 @@ The SSH private key is referenced by `inventory.ini` and must never be committed
 
 ## Kubernetes Deployment
 
+Run these commands on the VirtualBox VPS. If Minikube is not already running, start it first:
+
+```bash
+minikube status
+minikube start
+```
+
+If `minikube status` shows that the cluster is already running, continue with the next steps without running `minikube start` again.
+
 Create the TLS Secret locally. The certificate and private key are intentionally excluded from Git:
 
 ```bash
